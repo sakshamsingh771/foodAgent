@@ -1,0 +1,61 @@
+name: foodagent
+x-api-env: &api-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://foodagent:foodagent@db:5432/foodagent}
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  UPLOAD_DIR: /data/uploads
+  SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-false}
+  SIMULATOR_INTERVAL_SECONDS: ${SIMULATOR_INTERVAL_SECONDS:-90}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-foodagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foodagent}
+      POSTGRES_DB: ${POSTGRES_DB:-foodagent}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-foodagent} -d ${POSTGRES_DB:-foodagent}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    environment: *api-env
+    volumes: [uploads:/data/uploads]
+    ports: ["8000:8000"]
+    depends_on: { db: { condition: service_healthy } }
+    restart: unless-stopped
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.workers.worker"]
+    environment: *api-env
+    volumes: [uploads:/data/uploads]
+    depends_on: { api: { condition: service_healthy } }
+    restart: unless-stopped
+
+  simulator:
+    build: ./backend
+    command: ["python", "-m", "app.workers.simulator"]
+    environment: *api-env
+    depends_on: { api: { condition: service_healthy } }
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      args: { NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8000}" }
+    ports: ["3000:3000"]
+    depends_on: { api: { condition: service_healthy } }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:
