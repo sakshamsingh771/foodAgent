@@ -71,6 +71,9 @@ export function AllocationPanel({ caseId, status, canManage, canTransport, canSi
               <div><dt className="text-xs text-muted">Unallocated</dt><dd className="font-semibold tabular">{fmtKg(d.unallocated_kg)}</dd></div>
               <div><dt className="text-xs text-muted">Time left</dt><dd className="font-semibold tabular">{Math.floor(d.remaining_minutes / 60)}h {d.remaining_minutes % 60}m</dd></div>
             </dl>
+            {!closed && d.unallocated_kg > 0 && d.remaining_minutes <= 120 && (
+              <p role="alert" className="rounded-md bg-danger/10 p-3 text-sm">Deadline warning: only {Math.floor(d.remaining_minutes / 60)}h {d.remaining_minutes % 60}m of safe time remain with {fmtKg(d.unallocated_kg)} still unallocated. A person must approve any plan.</p>
+            )}
             {d.allocations.length === 0 ? <p className="text-sm text-muted">No allocations yet. Preview a plan below.</p> : (
               <ul className="divide-y divide-border rounded-md border border-border">{d.allocations.map((a) => (
                 <li key={a.id} className="space-y-1 px-3 py-2.5 text-sm">

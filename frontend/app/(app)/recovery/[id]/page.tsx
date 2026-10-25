@@ -136,7 +136,7 @@ export default function CasePage() {
                 </Card>
                 {!["rejected"].includes(c.status) && <AllocationPanel caseId={c.id} status={c.status} canManage={canApprove} canTransport={canPickup} canSimulate={!!user && ["ADMIN", "RECOVERY_MANAGER"].includes(user.role)} />}
                 {["pending_approval", "awaiting_recipient", "accepted"].includes(c.status) && user && ["ADMIN", "RECOVERY_MANAGER"].includes(user.role) && <Simulator c={c} />}
-                {(pickup || (c.status === "accepted" && canSchedule)) && (
+                {c.recipient && (pickup || (c.status === "accepted" && canSchedule)) && (
                   <Card>
                     <CardHeader title="Pickup & handover" />
                     <div className="space-y-3 p-4">
@@ -160,7 +160,7 @@ export default function CasePage() {
                 )}
                 <Card>
                   <CardHeader title="Activity & audit history" sub="Each entry is chained to the one before it." />
-                  <ol className="divide-y divide-border">{c.timeline.map((e) => <li key={e.id} className="flex gap-3 px-4 py-2.5"><span className="w-14 shrink-0 text-xs tabular text-muted">{new Date(e.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span><div><p className="text-sm">{e.summary}</p><p className="text-xs text-muted">{e.actor}</p></div></li>)}</ol>
+                  <ol className="divide-y divide-border">{c.timeline.map((e) => <li key={e.id} className="flex gap-3 px-4 py-2.5"><time dateTime={e.created_at} className="w-24 shrink-0 text-xs tabular text-muted">{new Date(e.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</time><div><p className="text-sm">{e.summary}</p><p className="text-xs text-muted">{e.actor}</p></div></li>)}</ol>
                 </Card>
               </div>
               <div className="space-y-5">

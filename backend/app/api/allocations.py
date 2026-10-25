@@ -22,6 +22,20 @@ def _alloc(db, alloc_id, user) -> Allocation:
     return get_owned(db, Allocation, alloc_id, user)
 
 
+@router.get("/allocations/active", dependencies=[Depends(require("pickups:read"))])
+def active_allocations(db: DB, user: CurrentUser):
+    """Offered/accepted multi-recipient allocations in the caller's organization (logistics worklist)."""
+    stmt = select(Allocation).where(Allocation.status.in_(("offered", "accepted"))).order_by(Allocation.eta, Allocation.id).limit(100)
+    if not user.is_platform_admin:
+        stmt = stmt.where(Allocation.org_id == user.org_id)
+    out = []
+    for a in db.execute(stmt).scalars().all():
+        c = db.get(RecoveryCase, a.case_id)
+        out.append({"id": str(a.id), "case_id": str(a.case_id), "case_number": c.case_number, "recipient_name": a.recipient.name, "rung": a.rung,
+                    "quantity_kg": a.quantity_kg, "status": a.status, "eta": a.eta.isoformat() if a.eta else None, "delay_minutes": a.delay_minutes})
+    return out
+
+
 @router.get("/recovery-cases/{case_id}/allocations", dependencies=[Depends(require("cases:read"))])
 def list_allocations(case_id: uuid.UUID, db: DB, user: CurrentUser):
     return svc.summary(db, _case(db, case_id, user))

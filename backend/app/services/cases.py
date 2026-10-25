@@ -198,7 +198,15 @@ def recipient_respond(db: Session, case: RecoveryCase, actor: User, accept: bool
     return replan(db, case, actor, f"{name} declined" + (f" ({reason})" if reason else ""), exclude_recipient=declined_id)
 
 
+def _require_single_recipient(case: RecoveryCase) -> None:
+    """The pickup workflow models ONE recipient. Multi-recipient cases are fulfilled per allocation
+    (POST /allocations/{id}/transport and /handover), which keeps reservations, metrics and audit consistent."""
+    if case.recipient_id is None:
+        raise Conflict("This case uses multi-recipient allocations. Use allocation transport and handover instead.", "USE_ALLOCATION_HANDOVER")
+
+
 def schedule_pickup(db: Session, case: RecoveryCase, actor: User, scheduled_for: datetime, logistics_user_id: uuid.UUID | None) -> Pickup:
+    _require_single_recipient(case)
     if case.status != "accepted":
         raise Conflict("A pickup can be scheduled once the recipient has accepted.", "CASE_NOT_ACCEPTED")
     if logistics_user_id:
@@ -254,6 +262,7 @@ def delay_pickup(db: Session, pickup: Pickup, actor: User | None, minutes: int, 
 
 def confirm_handover(db: Session, pickup: Pickup, actor: User, received_kg: float | None) -> Pickup:
     case = pickup.case
+    _require_single_recipient(case)
     if pickup.status != "arrived":
         raise Conflict("Handover can be confirmed once the pickup has arrived.", "PICKUP_NOT_ARRIVED")
     kg = received_kg if received_kg is not None else case.quantity_kg
