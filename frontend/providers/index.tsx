@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { ThemeProvider } from "next-themes";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
-import { API_BASE, ApiError, raw, session, type Session } from "@/lib/api";
+import { API_BASE, ApiError, api, raw, session, type Session } from "@/lib/api";
 import type { User } from "@/types/api";
 
 /* ---------- auth ---------- */
@@ -12,15 +12,32 @@ const Auth = createContext<AuthCtx>({ user: null, ready: false });
 export const useAuth = () => useContext(Auth);
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
+  const qc = useQueryClient();
   const [s, setS] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    const sync = () => setS(session.get());
-    sync(); setReady(true);
-    window.addEventListener("foodagent:session", sync);
-    window.addEventListener("storage", sync);
-    return () => { window.removeEventListener("foodagent:session", sync); window.removeEventListener("storage", sync); };
-  }, []);
+    let active = true;
+    const sync = async () => {
+      const next = session.get();
+      if (!next) { if (active) { setS(null); qc.clear(); setReady(true); } return; }
+      try {
+        const user = await api<User>("/auth/me");
+        if (active) {
+          setS({ ...next, user });
+          qc.clear();
+          setReady(true);
+        }
+      } catch {
+        session.set(null);
+        if (active) { setS(null); setReady(true); }
+      }
+    };
+    void sync();
+    const onSession = () => { void sync(); };
+    window.addEventListener("foodagent:session", onSession);
+    window.addEventListener("storage", onSession);
+    return () => { active = false; window.removeEventListener("foodagent:session", onSession); window.removeEventListener("storage", onSession); };
+  }, [qc]);
   return <Auth.Provider value={{ user: s?.user ?? null, ready }}>{children}</Auth.Provider>;
 }
 

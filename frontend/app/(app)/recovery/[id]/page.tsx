@@ -60,6 +60,7 @@ function Simulator({ c }: { c: CaseDetail }) {
 }
 
 function Evidence({ c }: { c: CaseDetail }) {
+  const { user } = useAuth();
   const qc = useQueryClient(); const ref = useRef<HTMLInputElement>(null); const [kind, setKind] = useState("photo");
   const m = useMutation({
     mutationFn: (file: File) => { const fd = new FormData(); fd.append("file", file); fd.append("kind", kind); return upload(`/recovery-cases/${c.id}/evidence`, fd); },
@@ -68,6 +69,7 @@ function Evidence({ c }: { c: CaseDetail }) {
   });
   const have = new Set(c.evidence.map((e) => e.kind));
   const closed = ["completed", "cancelled", "rejected"].includes(c.status);
+  const canUpload = !!user && ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER"].includes(user.role);
   return (
     <Card>
       <CardHeader title="Evidence" sub={`${Math.round(c.evidence_score * 100)}% of required evidence on file`} />
@@ -77,7 +79,7 @@ function Evidence({ c }: { c: CaseDetail }) {
           {c.evidence.map((e) => <li key={e.id} className="flex items-center justify-between gap-2 py-2 text-sm"><span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-muted" aria-hidden /><span className="truncate">{e.original_name}</span><Badge>{titleCase(e.kind)}</Badge></span>
             <button className="min-h-9 text-info hover:underline" onClick={() => download(`/recovery-cases/${c.id}/evidence/${e.id}/file`, e.original_name).catch((x) => toast.error(errorMessage(x)))}>Download</button></li>)}
         </ul>
-        {!closed && <div className="flex flex-wrap items-center gap-2">
+        {!closed && canUpload && <div className="flex flex-wrap items-center gap-2">
           <Select aria-label="Evidence type" value={kind} onChange={(e) => setKind(e.target.value)}>{["photo", "temperature_log", "label", "lab_report", "other"].map((k) => <option key={k} value={k}>{titleCase(k)}</option>)}</Select>
           <input ref={ref} type="file" accept=".jpg,.jpeg,.png,.pdf,.csv,.txt" className="sr-only" id="ev-file" onChange={(e) => e.target.files?.[0] && m.mutate(e.target.files[0])} />
           <Button variant="secondary" loading={m.isPending} onClick={() => ref.current?.click()}><Upload className="h-4 w-4" aria-hidden />Upload file</Button>
@@ -95,14 +97,14 @@ export default function CasePage() {
   const [pick, setPick] = useState<Option | null>(null); const [recipient, setRecipient] = useState(""); const [note, setNote] = useState("");
   const [dlg, setDlg] = useState<null | "approve" | "reject" | "replan" | "cancel">(null); const [reason, setReason] = useState("");
   const [when, setWhen] = useState(""); const [logi, setLogi] = useState("");
-  const logistics = useQuery({ queryKey: ["logi-users"], queryFn: () => get<{ id: string; name: string }[]>("/users/logistics"), enabled: !!user && ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER"].includes(user.role) });
+  const logistics = useQuery({ queryKey: ["logi-users"], queryFn: () => get<{ id: string; name: string }[]>("/users/logistics"), enabled: !!user && ["ADMIN", "OPERATIONS_MANAGER"].includes(user.role) });
   const done = () => { qc.invalidateQueries({ queryKey: ["case", id] }); qc.invalidateQueries({ queryKey: ["cases"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); setDlg(null); setReason(""); };
   const act = useMutation({ mutationFn: ({ path, body }: { path: string; body?: unknown }) => post(path, body), onSuccess: (_d, v) => { toast.success(v.path.endsWith("approve") ? "Plan approved. The recipient has been notified." : "Done."); done(); }, onError: (e) => toast.error(errorMessage(e)) });
   const pickupMut = useMutation({ mutationFn: ({ path, body, method }: { path: string; body?: unknown; method?: "patch" }) => (method === "patch" ? patch(path, body) : post(path, body)), onSuccess: () => { toast.success("Pickup updated."); done(); }, onError: (e) => toast.error(errorMessage(e)) });
 
   const canApprove = !!user && ["ADMIN", "RECOVERY_MANAGER"].includes(user.role);
-  const canClose = canApprove; const canPickup = !!user && ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "LOGISTICS"].includes(user.role);
-  const canSchedule = !!user && ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER"].includes(user.role);
+  const canClose = canApprove;   const canPickup = !!user && ["ADMIN", "OPERATIONS_MANAGER", "LOGISTICS"].includes(user.role);
+  const canSchedule = !!user && ["ADMIN", "OPERATIONS_MANAGER"].includes(user.role);
 
   return (
     <QueryBoundary q={q}>
@@ -132,8 +134,8 @@ export default function CasePage() {
                     {c.recipient && c.selected_rung && <p className="mt-3 text-sm">Assigned to <strong>{c.recipient.name}</strong> via {c.selected_rung}.</p>}
                   </div>
                 </Card>
-                {!["rejected"].includes(c.status) && <AllocationPanel caseId={c.id} status={c.status} canManage={canApprove} canTransport={canPickup} canSimulate={!!user && user.role !== "LOGISTICS"} />}
-                {["pending_approval", "awaiting_recipient", "accepted"].includes(c.status) && <Simulator c={c} />}
+                {!["rejected"].includes(c.status) && <AllocationPanel caseId={c.id} status={c.status} canManage={canApprove} canTransport={canPickup} canSimulate={!!user && ["ADMIN", "RECOVERY_MANAGER"].includes(user.role)} />}
+                {["pending_approval", "awaiting_recipient", "accepted"].includes(c.status) && user && ["ADMIN", "RECOVERY_MANAGER"].includes(user.role) && <Simulator c={c} />}
                 {(pickup || (c.status === "accepted" && canSchedule)) && (
                   <Card>
                     <CardHeader title="Pickup & handover" />

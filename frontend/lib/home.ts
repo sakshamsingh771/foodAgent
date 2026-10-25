@@ -1,2 +1,4 @@
 import type { Role } from "@/types/api";
-export const homeFor = (role: Role) => (role === "RECIPIENT" ? "/recipients" : role === "LOGISTICS" ? "/logistics" : "/dashboard");
+import { HOME_BY_ROLE } from "@/lib/rbac";
+
+export const homeFor = (role: Role) => HOME_BY_ROLE[role];

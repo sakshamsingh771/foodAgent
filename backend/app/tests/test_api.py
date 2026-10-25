@@ -61,6 +61,35 @@ def test_password_is_hashed(client):
     assert h.startswith("$2") and DEMO_PASSWORD not in h
 
 
+def test_all_demo_roles_resolve_and_restricted_operations_are_denied(client):
+    expected = {
+        ADMIN: "ADMIN", OPS: "OPERATIONS_MANAGER", REC: "RECOVERY_MANAGER",
+        LOGI: "LOGISTICS", AUD: "AUDITOR", NGO: "RECIPIENT",
+    }
+    for email, role in expected.items():
+        assert client.get(f"{API}/auth/me", headers=auth(client, email)).json()["role"] == role
+
+    lot_id = get(client, OPS, "/lots").json()["items"][0]["id"]
+    case_id = get(client, REC, "/recovery-cases").json()["items"][0]["id"]
+    assert post(client, REC, "/lots", {}).status_code == 403
+    assert post(client, AUD, f"/recovery-cases/{case_id}/approve", {"rung": "R1"}).status_code == 403
+    assert post(client, OPS, f"/recovery-cases/{case_id}/approve", {"rung": "R1"}).status_code == 403
+    assert post(client, LOGI, f"/recovery-cases/{case_id}/pickup", {}).status_code == 403
+    assert post(client, NGO, f"/recovery-cases/{case_id}/cancel", {}).status_code == 403
+    assert get(client, NGO, f"/lots/{lot_id}").status_code == 403
+
+
+def test_seed_is_repeatable_without_duplicate_demo_accounts(client):
+    from app.models import Organization, User
+    from app.seed import seed
+
+    with SessionLocal() as s:
+        result = seed(s)
+        assert result["seeded"] is False
+        assert s.query(Organization).filter(Organization.slug == "verdana-foods").count() == 1
+        assert s.query(User).filter(User.email == ADMIN).count() == 1
+
+
 # ---------------- RBAC + org isolation ----------------
 def test_role_permissions_enforced_on_backend(client):
     lots = get(client, OPS, "/lots").json()["items"]

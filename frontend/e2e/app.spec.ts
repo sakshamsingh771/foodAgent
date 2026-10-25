@@ -61,6 +61,24 @@ test("role guard: logistics cannot open the audit/scenarios area", async ({ page
   await expect(page).toHaveURL(/unauthorized/);
 });
 
+test("each demo role gets its own landing page and navigation", async ({ page }) => {
+  const roles = [
+    { email: "admin@verdanafoods.demo", path: "/dashboard", visible: "Manage users" },
+    { email: "ops@verdanafoods.demo", path: "/operations", visible: "Urgent lots" },
+    { email: "recovery@verdanafoods.demo", path: "/recovery", visible: "Recovery cases" },
+    { email: "recipient@annapurna.demo", path: "/recipients", visible: "Offers for you" },
+    { email: "logistics@verdanafoods.demo", path: "/logistics", visible: "Logistics" },
+    { email: "auditor@verdanafoods.demo", path: "/compliance", visible: "Compliance & audit" },
+  ];
+  for (const role of roles) {
+    await signIn(page, role.email);
+    await expect(page).toHaveURL(new RegExp(`${role.path.replace("/", "\\/")}$`));
+    await expect(page.getByText(role.visible, { exact: false }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("button", { name: "Sign out" }).click();
+  }
+});
+
 for (const path of ["/login", "/dashboard", "/operations", "/inventory", "/recovery", "/sustainability"]) {
   test(`axe: no serious violations on ${path}`, async ({ page }) => {
     if (path !== "/login") await signIn(page, "ops@verdanafoods.demo");

@@ -207,7 +207,7 @@ def seed(db) -> dict:
     events.notify_roles(db, verdana.id, [sec.OPS], "system_alert", "Line 2 proofing chamber drift detected", "Check lot BK-2609-01 freshness window.", "warning")
     audit.record(db, verdana.id, admin, "demo.seeded", "system", "seed", "Demo data loaded (simulated)")
     db.commit()
-    return {"seeded": True, "password": DEMO_PASSWORD}
+    return {"seeded": True}
 
 
 if __name__ == "__main__":

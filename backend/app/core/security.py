@@ -22,21 +22,28 @@ LOGISTICS = "LOGISTICS"
 AUDITOR = "AUDITOR"
 ROLES = [ADMIN, OPS, RECOVERY, RECIPIENT, LOGISTICS, AUDITOR]
 
-_READ_ALL = {
-    "lots:read", "cases:read", "recipients:read", "pickups:read", "plant:read", "planning:read",
-    "sustainability:read", "compliance:read", "audit:read", "scenarios:read", "dashboard:read",
-    "evidence:read", "simulate",
-}
 ROLE_PERMS: dict[str, set[str]] = {
-    ADMIN: _READ_ALL | {
+    ADMIN: {
+        "lots:read", "cases:read", "recipients:read", "pickups:read", "plant:read", "planning:read",
+        "sustainability:read", "compliance:read", "audit:read", "scenarios:read", "dashboard:read",
+        "evidence:read", "simulate",
         "lots:write", "cases:create", "cases:approve", "cases:close", "evidence:write",
-        "pickups:write", "compliance:write", "scenarios:run", "users:manage",
+        "pickups:write", "pickups:schedule", "compliance:write", "scenarios:run", "users:manage",
     },
-    OPS: (_READ_ALL - {"audit:read"}) | {
+    OPS: {
+        "lots:read", "cases:read", "recipients:read", "pickups:read", "plant:read", "planning:read",
+        "sustainability:read", "compliance:read", "scenarios:read", "dashboard:read", "evidence:read",
         "lots:write", "cases:create", "evidence:write", "pickups:write", "scenarios:run", "compliance:write",
+        "pickups:schedule",
     },
-    RECOVERY: _READ_ALL | {"cases:create", "cases:approve", "cases:close", "evidence:write", "pickups:write"},
-    AUDITOR: set(_READ_ALL),
+    RECOVERY: {
+        "lots:read", "cases:read", "recipients:read", "pickups:read", "compliance:read", "audit:read",
+        "dashboard:read", "evidence:read", "simulate", "cases:approve", "cases:close", "evidence:write",
+    },
+    AUDITOR: {
+        "lots:read", "cases:read", "recipients:read", "pickups:read", "compliance:read", "audit:read",
+        "dashboard:read", "evidence:read", "scenarios:read",
+    },
     LOGISTICS: {"pickups:read", "pickups:write", "cases:read", "lots:read", "evidence:read", "dashboard:read"},
     RECIPIENT: {"recipient:inbox", "recipient:respond", "pickups:handover_own"},
 }

@@ -21,7 +21,7 @@ def directory(db: DB):
     return [recipient_out(r) for r in rows]
 
 
-@router.get("/users/logistics", dependencies=[Depends(require("pickups:write"))])
+@router.get("/users/logistics", dependencies=[Depends(require("pickups:schedule"))])
 def logistics_users(db: DB, user: CurrentUser):
     rows = db.execute(select(User).where(User.org_id == user.org_id, User.role == sec.LOGISTICS, User.is_active.is_(True))).scalars().all()
     return [{"id": str(u.id), "name": u.full_name} for u in rows]
@@ -43,7 +43,7 @@ def list_pickups(db: DB, user: CurrentUser, p: Page = Depends(), status: str | N
     return paged([pickup_out(x) for x in rows], total, p)
 
 
-@router.post("/recovery-cases/{case_id}/pickup", status_code=201)
+@router.post("/recovery-cases/{case_id}/pickup", status_code=201, dependencies=[Depends(require("pickups:schedule"))])
 def schedule(case_id: uuid.UUID, body: PickupIn, db: DB, user: User = Depends(require("pickups:write"))):
     case = get_owned(db, RecoveryCase, case_id, user)
     p = cases.schedule_pickup(db, case, user, body.scheduled_for, body.logistics_user_id)

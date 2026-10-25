@@ -1,7 +1,7 @@
 "use client";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Bell, Boxes, Building2, ClipboardCheck, Factory, Gauge, HeartHandshake, LayoutDashboard, LineChart, Leaf, Menu, Moon, Search, Settings, ShieldCheck, Sun, SunMoon, Truck, FlaskConical, LogOut } from "lucide-react";
+import { Bell, Leaf, Menu, Moon, Search, Sun, SunMoon, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,29 +11,14 @@ import { Badge, Button, Popover } from "@/components/ui";
 import { get, logout, post } from "@/lib/api";
 import { cn, titleCase } from "@/lib/utils";
 import { useAuth, useLive } from "@/providers";
-import type { Notification, Page, Role } from "@/types/api";
-
-interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles?: Role[] }
-const STAFF: Role[] = ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"];
-export const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: [...STAFF, "LOGISTICS"] },
-  { href: "/operations", label: "Live Operations", icon: Activity, roles: STAFF },
-  { href: "/inventory", label: "Inventory", icon: Boxes, roles: STAFF },
-  { href: "/recovery", label: "Recovery", icon: ClipboardCheck, roles: STAFF },
-  { href: "/planning", label: "Planning", icon: LineChart, roles: STAFF },
-  { href: "/plant", label: "Plant", icon: Factory, roles: STAFF },
-  { href: "/recipients", label: "Recipients", icon: HeartHandshake, roles: [...STAFF, "RECIPIENT"] },
-  { href: "/logistics", label: "Logistics", icon: Truck, roles: [...STAFF, "LOGISTICS"] },
-  { href: "/sustainability", label: "Sustainability", icon: Leaf, roles: STAFF },
-  { href: "/compliance", label: "Compliance", icon: ShieldCheck, roles: STAFF },
-  { href: "/scenarios", label: "Scenarios", icon: FlaskConical, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"] },
-  { href: "/settings", label: "Settings", icon: Settings, roles: [...STAFF, "LOGISTICS", "RECIPIENT"] },
-];
+import type { Notification, Page } from "@/types/api";
+import { homeFor } from "@/lib/home";
+import { navFor } from "@/lib/rbac";
 const MOBILE_KEYS = ["/dashboard", "/operations", "/recovery", "/logistics", "/recipients"];
 
 export function useNav() {
   const { user } = useAuth();
-  return NAV.filter((n) => !n.roles || (user && n.roles.includes(user.role)));
+  return navFor(user?.role);
 }
 
 function ThemeToggle() {
@@ -149,7 +134,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen lg:grid lg:grid-cols-[15rem_1fr]">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-surface focus:px-3 focus:py-2">Skip to content</a>
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-border bg-surface p-3 lg:flex">
-        <Link href="/dashboard" className="mb-5 flex items-center gap-2 px-3 py-2"><span className="grid h-8 w-8 place-items-center rounded-md bg-brand text-brand-fg"><Leaf className="h-4 w-4" aria-hidden /></span><span className="font-display text-xl font-semibold">foodAgent</span></Link>
+        <Link href={homeFor(user.role)} className="mb-5 flex items-center gap-2 px-3 py-2"><span className="grid h-8 w-8 place-items-center rounded-md bg-brand text-brand-fg"><Leaf className="h-4 w-4" aria-hidden /></span><span className="font-display text-xl font-semibold">foodAgent</span></Link>
         <div className="flex-1 overflow-y-auto"><Links /></div>
         <p className="px-3 pt-3 text-[11px] leading-snug text-muted">Decision support only. foodAgent doesn&apos;t certify food as safe.</p>
       </aside>
