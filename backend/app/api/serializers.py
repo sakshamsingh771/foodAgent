@@ -1,3 +1,4 @@
+from app.core import security as sec
 from app.core.database import utcnow
 from app.models import (AuditEvent, Evidence, InventoryLot, Notification, Pickup, Recipient, RecoveryCase,
                         RecoveryOption, User)
@@ -12,7 +13,8 @@ def iso(d):
 def user_out(u: User) -> dict:
     return {"id": str(u.id), "email": u.email, "full_name": u.full_name, "role": u.role, "org_id": str(u.org_id) if u.org_id else None,
             "recipient_id": str(u.recipient_id) if u.recipient_id else None, "language": u.language,
-            "is_platform_admin": u.is_platform_admin, "is_active": u.is_active}
+            "is_platform_admin": u.is_platform_admin, "is_active": u.is_active,
+            "permissions": sorted(sec.ROLE_PERMS.get(u.role, set()))}
 
 
 def freshness_out(lot: InventoryLot, now=None) -> dict:

@@ -8,8 +8,8 @@ from app.api.serializers import iso, lot_out
 from app.core.database import utcnow
 from app.core.errors import AppError
 from app.models import User
-from app.models import FreshnessAssessment, InventoryLot, Plant, Product, RecoveryCase
-from app.schemas import LotIn
+from app.models import AuditEvent, FreshnessAssessment, InventoryLot, Plant, Product, RecoveryCase
+from app.schemas import LotAdjustIn, LotIn
 from app.services import audit, cases, events, freshness
 
 router = APIRouter(tags=["inventory"])
@@ -98,3 +98,40 @@ def products(db: DB, user: CurrentUser):
 def plants(db: DB, user: CurrentUser):
     rows = db.execute(select(Plant).where(*_org_filter(Plant, user)).order_by(Plant.name)).scalars().all()
     return [{"id": str(p.id), "name": p.name, "city": p.city, "status": p.status} for p in rows]
+
+
+@router.post("/lots/{lot_id}/adjust", dependencies=[Depends(require("lots:adjust"))])
+def adjust_lot(lot_id: uuid.UUID, body: LotAdjustIn, db: DB, user: CurrentUser):
+    """Controlled stock adjustment: reason required, never below reserved/case quantity, never <= 0, row-locked."""
+    get_owned(db, InventoryLot, lot_id, user)  # 404 for other organizations
+    lot = db.execute(select(InventoryLot).where(InventoryLot.id == lot_id).with_for_update()).unique().scalar_one()
+    if lot.status not in ("available", "in_recovery"):
+        raise AppError("Only available or in-recovery lots can be adjusted.", "LOT_NOT_ADJUSTABLE", 409)
+    if body.delta_kg == 0:
+        raise AppError("The adjustment must be non-zero.", "ZERO_ADJUSTMENT", 422)
+    new_qty = round(lot.quantity_kg + body.delta_kg, 3)
+    if new_qty <= 0:
+        raise AppError("Stock can't go to zero or below. Dispose of the lot through a recovery case instead.", "NEGATIVE_STOCK", 422)
+    if new_qty > 100000:
+        raise AppError("Quantity exceeds the 100,000 kg limit.", "QUANTITY_TOO_LARGE", 422)
+    active = db.execute(select(RecoveryCase).where(RecoveryCase.lot_id == lot.id, RecoveryCase.status.in_(cases.ACTIVE_CASE))).unique().scalars().all()
+    floor = max([lot.reserved_kg or 0.0] + [c.quantity_kg for c in active])
+    if body.delta_kg < 0 and new_qty < floor:
+        raise AppError(f"{floor:g} kg is reserved or committed to an open recovery case; the lot can't drop below that.", "BELOW_COMMITTED", 409)
+    old = lot.quantity_kg
+    lot.quantity_kg = new_qty
+    audit.record(db, lot.org_id, user, "lot.adjusted", "lot", lot.id, f"Lot {lot.lot_code} adjusted {old:g} → {new_qty:g} kg: {body.reason.strip()}",
+                 {"lot_code": lot.lot_code, "before_kg": old, "after_kg": new_qty, "delta_kg": body.delta_kg, "reason": body.reason.strip()})
+    events.publish(db, lot.org_id, "lot.updated", {"lot_id": str(lot.id)})
+    db.commit()
+    db.refresh(lot)
+    return lot_out(lot)
+
+
+@router.get("/lots/{lot_id}/history", dependencies=[Depends(require("lots:read"))])
+def lot_history(lot_id: uuid.UUID, db: DB, user: CurrentUser):
+    lot = get_owned(db, InventoryLot, lot_id, user)
+    rows = db.execute(select(AuditEvent).where(AuditEvent.org_id == lot.org_id, AuditEvent.resource_type == "lot", AuditEvent.resource_id == str(lot.id))
+                      .order_by(AuditEvent.seq.desc()).limit(100)).scalars().all()
+    from app.api.serializers import audit_out
+    return [audit_out(e) for e in rows]

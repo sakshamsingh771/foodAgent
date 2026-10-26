@@ -31,7 +31,7 @@ def active_allocations(db: DB, user: CurrentUser):
     out = []
     for a in db.execute(stmt).scalars().all():
         c = db.get(RecoveryCase, a.case_id)
-        out.append({"id": str(a.id), "case_id": str(a.case_id), "case_number": c.case_number, "recipient_name": a.recipient.name, "rung": a.rung,
+        out.append({"id": str(a.id), "case_id": str(a.case_id), "case_number": c.case_number if c else None, "recipient_name": a.recipient.name, "rung": a.rung,
                     "quantity_kg": a.quantity_kg, "status": a.status, "eta": a.eta.isoformat() if a.eta else None, "delay_minutes": a.delay_minutes})
     return out
 

@@ -145,3 +145,14 @@ class TransportEventIn(BaseModel):
     kind: Literal["delay", "failure"]
     minutes: int = Field(default=0, ge=0, le=720)
     reason: str = Field(min_length=3, max_length=200)
+
+
+class UserUpdateIn(BaseModel):
+    role: Literal["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "LOGISTICS", "AUDITOR"] | None = None
+    is_active: bool | None = None
+    reason: str | None = Field(None, max_length=200)
+
+
+class LotAdjustIn(BaseModel):
+    delta_kg: float = Field(allow_inf_nan=False)
+    reason: str = Field(min_length=5, max_length=200)

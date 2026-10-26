@@ -17,7 +17,7 @@ from app.core.database import SessionLocal, utcnow
 from app.core.errors import AppError, Conflict, NotFound
 from app.models import (ComplianceDocument, EventOutbox, InventoryLot, Notification, Organization, Product, Recipient,
                         RecoveryCase, ScenarioRun, User)
-from app.schemas import ScenarioApplyIn, ScenarioIn, UserCreateIn
+from app.schemas import ScenarioApplyIn, ScenarioIn, UserCreateIn, UserUpdateIn
 from app.services import audit, scenarios
 
 settings = get_settings()
@@ -61,6 +61,8 @@ async def add_document(db: DB, title: str = Form(..., min_length=2, max_length=2
         d.original_name, d.stored_name, d.content_type, d.size_bytes, _ = await store_upload(file)
     db.add(d)
     db.flush()
+    if user.org_id is None:
+        raise AppError("An organization is required to add compliance documents.", "ORG_REQUIRED", 403)
     audit.record(db, user.org_id, user, "compliance.document_added", "document", d.id, f"Document added: {d.title}", {"type": doc_type})
     db.commit()
     return _doc_out(d)
@@ -219,6 +221,43 @@ def create_user(body: UserCreateIn, db: DB, user: User = Depends(require("users:
     audit.record(db, user.org_id, user, "user.created", "user", u.id, f"{user.full_name} added {u.full_name} as {u.role}")
     db.commit()
     return user_out(u)
+
+
+@router.patch("/users/{user_id}", tags=["users"])
+def update_user(user_id: uuid.UUID, body: UserUpdateIn, db: DB, user: User = Depends(require("users:manage"))):
+    """Change a user's role or activation. Org-scoped; self-lockout and last-admin removal are refused."""
+    target = db.get(User, user_id)
+    if target is None or (not user.is_platform_admin and target.org_id != user.org_id):
+        raise NotFound("We couldn't find that record.", "NOT_FOUND")
+    if target.is_platform_admin and not user.is_platform_admin:
+        raise NotFound("We couldn't find that record.", "NOT_FOUND")
+    new_role = body.role if body.role is not None else target.role
+    new_active = body.is_active if body.is_active is not None else target.is_active
+    if new_role == target.role and new_active == target.is_active:
+        return user_out(target)
+    if target.id == user.id:
+        raise AppError("You can't change your own role or deactivate yourself.", "SELF_CHANGE_FORBIDDEN", 422)
+    if target.role == sec.RECIPIENT and new_role != target.role:
+        raise AppError("Recipient accounts are tied to a recipient organization and can't change role.", "RECIPIENT_ROLE_LOCKED", 422)
+    if not body.reason or not body.reason.strip():
+        raise AppError("Please give a reason for this change.", "REASON_REQUIRED", 422)
+    losing_admin = target.role == sec.ADMIN and target.is_active and (new_role != sec.ADMIN or not new_active)
+    if losing_admin:
+        others = db.execute(select(func.count()).select_from(User).where(User.org_id == target.org_id, User.role == sec.ADMIN,
+                                                                         User.is_active.is_(True), User.id != target.id)).scalar_one()
+        if others == 0:
+            raise AppError("An organization needs at least one active admin.", "LAST_ADMIN", 409)
+    before = {"role": target.role, "is_active": target.is_active}
+    target.role, target.is_active = new_role, new_active
+    if not new_active:
+        from app.models import RefreshToken
+        db.execute(update(RefreshToken).where(RefreshToken.user_id == target.id, RefreshToken.revoked_at.is_(None)).values(revoked_at=utcnow()))
+    action = "user.deactivated" if (before["is_active"] and not new_active) else "user.reactivated" if (new_active and not before["is_active"]) else "user.role_changed"
+    audit.record(db, target.org_id or user.org_id, user, action, "user", target.id,
+                 f"{user.full_name} changed {target.full_name}: {before['role']}/{'active' if before['is_active'] else 'inactive'} → {new_role}/{'active' if new_active else 'inactive'}",
+                 {"before": before, "after": {"role": new_role, "is_active": new_active}, "reason": body.reason.strip()})
+    db.commit()
+    return user_out(target)
 
 
 @router.get("/organizations/current", tags=["users"])

@@ -1,7 +1,7 @@
 export type Role = "ADMIN" | "OPERATIONS_MANAGER" | "RECOVERY_MANAGER" | "RECIPIENT" | "LOGISTICS" | "AUDITOR";
 export type FreshState = "SAFE" | "ACT_SOON" | "LOSS_IMMINENT";
 export type Method = "RULE" | "STATISTICAL" | "ML" | "LLM" | "SIMULATED";
-export interface User { id: string; email: string; full_name: string; role: Role; org_id: string | null; recipient_id: string | null; language: string; is_platform_admin: boolean }
+export interface User { id: string; email: string; full_name: string; role: Role; org_id: string | null; recipient_id: string | null; language: string; is_platform_admin: boolean; is_active?: boolean; permissions: string[] }
 export interface Page<T> { items: T[]; total: number; page: number; page_size: number; pages: number }
 export interface Freshness { remaining_minutes: number; percent: number; state: FreshState; method: Method }
 export interface Lot {

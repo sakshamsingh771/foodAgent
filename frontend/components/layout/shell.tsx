@@ -18,7 +18,7 @@ const MOBILE_KEYS = ["/dashboard", "/operations", "/recovery", "/logistics", "/r
 
 export function useNav() {
   const { user } = useAuth();
-  return navFor(user?.role);
+  return navFor(user?.role, user?.permissions);
 }
 
 function ThemeToggle() {

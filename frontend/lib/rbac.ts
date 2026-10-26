@@ -9,6 +9,8 @@ import {
   Leaf,
   LineChart,
   Settings,
+  FileDown,
+  Users,
   ShieldCheck,
   Truck,
 } from "lucide-react";
@@ -20,6 +22,8 @@ export interface NavItem {
   label: string;
   icon: ComponentType<{ className?: string }>;
   roles: readonly Role[];
+  /** Backend permission required (any role check AND this permission). Backend remains authoritative. */
+  perm?: string;
 }
 
 const ALL = ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"] as const;
@@ -38,6 +42,8 @@ export const NAV: readonly NavItem[] = [
   { href: "/sustainability", label: "Sustainability", icon: Leaf, roles: ADMIN_OPS },
   { href: "/compliance", label: "Compliance & audit", icon: ShieldCheck, roles: ["ADMIN", "RECOVERY_MANAGER", "AUDITOR"] },
   { href: "/scenarios", label: "Scenarios", icon: FlaskConical, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"] },
+  { href: "/users", label: "Users & roles", icon: Users, roles: ["ADMIN"], perm: "users:manage" },
+  { href: "/reports", label: "Reports", icon: FileDown, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"], perm: "reports:export" },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR", "LOGISTICS", "RECIPIENT"] },
 ];
 
@@ -50,5 +56,7 @@ export const HOME_BY_ROLE: Record<Role, string> = {
   AUDITOR: "/compliance",
 };
 
-export const navFor = (role: Role | undefined) =>
-  NAV.filter((item) => !!role && item.roles.includes(role));
+export const can = (perms: readonly string[] | undefined, perm: string) => !!perms && perms.includes(perm);
+
+export const navFor = (role: Role | undefined, perms?: readonly string[]) =>
+  NAV.filter((item) => !!role && item.roles.includes(role) && (!item.perm || can(perms, item.perm)));
