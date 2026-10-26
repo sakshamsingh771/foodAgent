@@ -56,13 +56,13 @@ async def add_document(db: DB, title: str = Form(..., min_length=2, max_length=2
                        user: User = Depends(require("compliance:write"))):
     if doc_type not in {"license", "label", "certificate", "sop", "other"}:
         raise AppError("Choose a valid document type.", "INVALID_DOC_TYPE", 422)
+    if user.org_id is None:
+        raise AppError("Platform accounts must act within an organization to add documents.", "ORG_REQUIRED", 422)
     d = ComplianceDocument(org_id=user.org_id, title=title.strip(), doc_type=doc_type, issuer=issuer, reference=reference, valid_until=valid_until, uploaded_by=user.id)
     if file is not None and file.filename:
         d.original_name, d.stored_name, d.content_type, d.size_bytes, _ = await store_upload(file)
     db.add(d)
     db.flush()
-    if user.org_id is None:
-        raise AppError("An organization is required to add compliance documents.", "ORG_REQUIRED", 403)
     audit.record(db, user.org_id, user, "compliance.document_added", "document", d.id, f"Document added: {d.title}", {"type": doc_type})
     db.commit()
     return _doc_out(d)
@@ -218,6 +218,8 @@ def create_user(body: UserCreateIn, db: DB, user: User = Depends(require("users:
     u = User(email=body.email, full_name=body.full_name.strip(), password_hash=sec.hash_password(body.password), role=body.role, org_id=user.org_id, created_by=user.id)
     db.add(u)
     db.flush()
+    if user.org_id is None:
+        raise AppError("Platform accounts must act within an organization to create users.", "ORG_REQUIRED", 422)
     audit.record(db, user.org_id, user, "user.created", "user", u.id, f"{user.full_name} added {u.full_name} as {u.role}")
     db.commit()
     return user_out(u)
@@ -253,7 +255,10 @@ def update_user(user_id: uuid.UUID, body: UserUpdateIn, db: DB, user: User = Dep
         from app.models import RefreshToken
         db.execute(update(RefreshToken).where(RefreshToken.user_id == target.id, RefreshToken.revoked_at.is_(None)).values(revoked_at=utcnow()))
     action = "user.deactivated" if (before["is_active"] and not new_active) else "user.reactivated" if (new_active and not before["is_active"]) else "user.role_changed"
-    audit.record(db, target.org_id or user.org_id, user, action, "user", target.id,
+    audit_org = target.org_id or user.org_id
+    if audit_org is None:
+        raise AppError("This change must be made within an organization.", "ORG_REQUIRED", 422)
+    audit.record(db, audit_org, user, action, "user", target.id,
                  f"{user.full_name} changed {target.full_name}: {before['role']}/{'active' if before['is_active'] else 'inactive'} → {new_role}/{'active' if new_active else 'inactive'}",
                  {"before": before, "after": {"role": new_role, "is_active": new_active}, "reason": body.reason.strip()})
     db.commit()

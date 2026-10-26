@@ -209,6 +209,7 @@ def schedule_pickup(db: Session, case: RecoveryCase, actor: User, scheduled_for:
     _require_single_recipient(case)
     if case.status != "accepted":
         raise Conflict("A pickup can be scheduled once the recipient has accepted.", "CASE_NOT_ACCEPTED")
+    lu: User | None = None
     if logistics_user_id:
         lu = db.get(User, logistics_user_id)
         if not lu or lu.org_id != case.org_id or lu.role != sec.LOGISTICS:
@@ -221,7 +222,7 @@ def schedule_pickup(db: Session, case: RecoveryCase, actor: User, scheduled_for:
     audit.record(db, case.org_id, actor, "pickup.scheduled", "pickup", p.id, f"Pickup scheduled for {scheduled_for:%H:%M}", {"scheduled_for": scheduled_for}, case.id)
     events.publish(db, case.org_id, "recovery.updated", {"case_id": str(case.id)})
     events.publish(db, case.org_id, "pickup.scheduled", {"case_id": str(case.id), "pickup_id": str(p.id)}, recipient_id=case.recipient_id)
-    if logistics_user_id:
+    if lu is not None:
         events.add_notification(db, lu, case.org_id, "pickup_assigned", f"Pickup assigned: {case.case_number}", f"{case.lot.product.name}, {case.quantity_kg:g} kg", "info", "pickup", p.id)
     return p
 

@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import DB, CurrentUser, require
 from app.core import security as sec
+from app.core.errors import AppError
 from app.core.database import utcnow
 from app.models import AuditEvent, Evidence, InventoryLot, Pickup, RecoveryCase, User
 from app.services import audit
@@ -19,6 +20,13 @@ LATE = ("pending", "assigned", "scheduled", "in_transit", "arrived")
 
 def _org(model, user):
     return [] if user.is_platform_admin else [model.org_id == user.org_id]
+
+
+def _org_id(user: User):
+    """Audit events need a concrete organization; platform accounts without one can't export."""
+    if user.org_id is None:
+        raise AppError("Select an organization account to run this report.", "ORG_REQUIRED", 422)
+    return user.org_id
 
 
 def _csv(name: str, header: list[str], rows) -> StreamingResponse:
@@ -53,8 +61,8 @@ def exceptions(db: DB, user: CurrentUser):
 @router.get("/reports/cases.csv", dependencies=[Depends(require("reports:export"))])
 def cases_csv(db: DB, user: CurrentUser):
     rows = db.execute(select(RecoveryCase).where(*_org(RecoveryCase, user)).order_by(RecoveryCase.created_at.desc())).unique().scalars().all()
-    ev = dict(db.execute(select(Evidence.case_id, func.count()).where(*_org(Evidence, user)).group_by(Evidence.case_id)).all())
-    audit.record(db, user.org_id, user, "report.exported", "report", "cases", f"{user.full_name} exported the case report", {"rows": len(rows)})
+    ev: dict = {cid: n for cid, n in db.execute(select(Evidence.case_id, func.count()).where(*_org(Evidence, user)).group_by(Evidence.case_id)).all()}
+    audit.record(db, _org_id(user), user, "report.exported", "report", "cases", f"{user.full_name} exported the case report", {"rows": len(rows)})
     db.commit()
     return _csv("foodagent-cases.csv", ["case_number", "status", "lot_code", "rung", "quantity_kg", "recovered_kg", "recipient", "evidence_count", "created_at"],
                 [[c.case_number, c.status, c.lot.lot_code, c.selected_rung or "", c.quantity_kg, c.recovered_kg if c.recovered_kg is not None else "",
@@ -64,7 +72,7 @@ def cases_csv(db: DB, user: CurrentUser):
 @router.get("/reports/inventory.csv", dependencies=[Depends(require("reports:export"))])
 def inventory_csv(db: DB, user: CurrentUser):
     rows = db.execute(select(InventoryLot).where(*_org(InventoryLot, user)).order_by(InventoryLot.safe_until)).unique().scalars().all()
-    audit.record(db, user.org_id, user, "report.exported", "report", "inventory", f"{user.full_name} exported the inventory report", {"rows": len(rows)})
+    audit.record(db, _org_id(user), user, "report.exported", "report", "inventory", f"{user.full_name} exported the inventory report", {"rows": len(rows)})
     db.commit()
     return _csv("foodagent-inventory.csv", ["lot_code", "product", "status", "quantity_kg", "reserved_kg", "storage", "produced_at", "safe_until"],
                 [[l.lot_code, l.product.name, l.status, l.quantity_kg, l.reserved_kg, l.storage, l.produced_at.isoformat(), l.safe_until.isoformat()] for l in rows])
@@ -73,7 +81,7 @@ def inventory_csv(db: DB, user: CurrentUser):
 @router.get("/reports/pickups.csv", dependencies=[Depends(require("reports:export"))])
 def pickups_csv(db: DB, user: CurrentUser):
     rows = db.execute(select(Pickup).where(*_org(Pickup, user)).order_by(Pickup.scheduled_for.desc())).unique().scalars().all()
-    audit.record(db, user.org_id, user, "report.exported", "report", "pickups", f"{user.full_name} exported the logistics report", {"rows": len(rows)})
+    audit.record(db, _org_id(user), user, "report.exported", "report", "pickups", f"{user.full_name} exported the logistics report", {"rows": len(rows)})
     db.commit()
     return _csv("foodagent-pickups.csv", ["case_number", "status", "scheduled_for", "delay_minutes", "handed_over_at", "received_kg"],
                 [[p.case.case_number, p.status, p.scheduled_for.isoformat(), p.delay_minutes, p.handed_over_at.isoformat() if p.handed_over_at else "", p.received_kg if p.received_kg is not None else ""] for p in rows])

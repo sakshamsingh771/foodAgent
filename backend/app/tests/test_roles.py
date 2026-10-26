@@ -97,7 +97,9 @@ def test_adjust_validations_and_audit(client):
     hist = get(client, OPS, f"/lots/{lot['id']}/history").json()
     assert hist[0]["action"] == "lot.adjusted" and hist[0]["metadata"]["reason"] == "recount found extra crates"
     with SessionLocal() as s:
-        assert audit.verify_chain(s, s.get(InventoryLot, uuid.UUID(lot["id"])).org_id)["valid"]
+        row = s.get(InventoryLot, uuid.UUID(lot["id"]))
+        assert row is not None
+        assert audit.verify_chain(s, row.org_id)["valid"]
 
 
 def test_adjust_cross_org_and_role(client):
@@ -111,6 +113,7 @@ def test_adjust_cannot_drop_below_reserved(client):
     lot = _first_lot(client)
     with SessionLocal() as s:
         l = s.get(InventoryLot, uuid.UUID(lot["id"]))
+        assert l is not None
         l.reserved_kg = l.quantity_kg - 1
         s.commit()
     r = post(client, OPS, f"/lots/{lot['id']}/adjust", {"delta_kg": -5, "reason": "try below reserved"})

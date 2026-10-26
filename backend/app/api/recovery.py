@@ -144,7 +144,7 @@ def simulate(case_id: uuid.UUID, body: SimulateIn, db: DB, user: User = Depends(
         return None if x is None else {"rung": x.rung, "label": eng.RUNG_LABELS[x.rung], "p_success": x.p_success, "est_recovery_kg": x.est_recovery_kg}
     return {"simulated": True, "method": "SIMULATED", "p_success": sim["p_success"], "recommended": o(sim["recommended"]), "hedge": o(sim["hedge"]),
             "deadline": iso(sim["deadline"]), "expected_recovery_kg": sim["expected_recovery_kg"],
-            "options": [{**o(x), "eligible": x.eligible, "reason": x.reason} for x in sim["options"]],
+            "options": [{**(o(x) or {}), "eligible": x.eligible, "reason": x.reason} for x in sim["options"]],
             "note": "Modelled from the inputs you set. Not a guaranteed outcome."}
 
 
