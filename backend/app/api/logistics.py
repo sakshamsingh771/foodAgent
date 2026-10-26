@@ -3,13 +3,18 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 
-from app.api.deps import DB, CurrentUser, Page, ensure_org, get_owned, paged, require
+from app.api.deps import DB, CurrentUser, Page, get_owned, paged, require
 from app.api.serializers import freshness_out, iso, pickup_out, recipient_out
 from app.core import security as sec
-from app.core.database import utcnow
 from app.core.errors import Forbidden, NotFound
 from app.models import Pickup, Recipient, RecoveryCase, User
-from app.schemas import DelayIn, HandoverIn, PickupIn, PickupStatusIn, RecipientResponseIn
+from app.schemas import (
+    DelayIn,
+    HandoverIn,
+    PickupIn,
+    PickupStatusIn,
+    RecipientResponseIn,
+)
 from app.services import cases
 
 router = APIRouter(tags=["logistics"])

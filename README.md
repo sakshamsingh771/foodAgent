@@ -34,6 +34,6 @@ Tests: `cd backend && pytest app/tests -q` (SQLite by default; set `TEST_DATABAS
 See `.env.example`. Required: `JWT_SECRET`, `JWT_REFRESH_SECRET` (production refuses dev/weak values), `DATABASE_URL`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`. `GEMINI_API_KEY` and `GEMINI_MODEL` enable the server-side AI assistant; the feature reports a truthful unavailable state when they are empty. `LLM_API_KEY` is legacy and optional.
 
 ## Docs
-[ARCHITECTURE](ARCHITECTURE.md) · [API](API.md) · [DATABASE](DATABASE.md) · [SECURITY](SECURITY.md) · [DEPLOYMENT](DEPLOYMENT.md) · [DEMO](DEMO.md) · [ASSUMPTIONS](ASSUMPTIONS.md) · [PRODUCT_AUDIT](PRODUCT_AUDIT.md)
+[ARCHITECTURE](ARCHITECTURE.md) · [API](API.md) · [DATABASE](DATABASE.md) · [SECURITY](SECURITY.md) · [DEPLOYMENT](DEPLOYMENT.md) · [DEMO](DEMO.md) · [ASSUMPTIONS](ASSUMPTIONS.md) · [PRODUCT_AUDIT](PRODUCT_AUDIT.md) · [Project audit](docs/PROJECT_AUDIT.md) · [Role matrix](docs/ROLE_PERMISSION_MATRIX.md)
 
 AI assistant (Gemini): see [AI.md](AI.md).

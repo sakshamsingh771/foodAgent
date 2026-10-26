@@ -5,13 +5,23 @@ from datetime import datetime, timedelta
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core import security as sec
 from app.core.database import utcnow
-from app.core.errors import AppError, Conflict, NotFound
-from app.models import (Evidence, FreshnessAssessment, InventoryLot, Pickup, Recipient, RecoveryCase,
-                        RecoveryDecision, RecoveryOption, SustainabilityMetric, User)
+from app.core.errors import AppError, Conflict
+from app.models import (
+    Evidence,
+    FreshnessAssessment,
+    InventoryLot,
+    Pickup,
+    Recipient,
+    RecoveryCase,
+    RecoveryDecision,
+    RecoveryOption,
+    SustainabilityMetric,
+    User,
+)
 from app.services import audit, events, freshness
 from app.services import recovery_engine as eng
-from app.core import security as sec
 
 ACTIVE_CASE = ("pending_approval", "awaiting_recipient", "accepted", "pickup_scheduled", "in_transit")
 PICKUP_FLOW = {

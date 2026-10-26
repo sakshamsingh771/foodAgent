@@ -41,6 +41,7 @@ services:
     environment: *api-env
     volumes: [uploads:/data/uploads]
     depends_on: { api: { condition: service_healthy } }
+    healthcheck: { disable: true }
     restart: unless-stopped
 
   simulator:
@@ -48,6 +49,7 @@ services:
     command: ["python", "-m", "app.workers.simulator"]
     environment: *api-env
     depends_on: { api: { condition: service_healthy } }
+    healthcheck: { disable: true }
     restart: unless-stopped
 
   web:

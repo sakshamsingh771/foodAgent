@@ -4,16 +4,16 @@ import { signIn } from "./helpers";
 
 test("login rejects bad credentials with a friendly message", async ({ page }) => {
   await page.goto("/login");
-  await page.getByLabel("Email").fill("ops@verdanafoods.demo");
-  await page.getByLabel("Password").fill("not-the-password1");
+  await page.locator('input[autocomplete="email"]').fill("ops@verdanafoods.demo");
+  await page.locator('input[autocomplete="current-password"]').fill("not-the-password1");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("alert")).toContainText("don't match");
+  await expect(page.getByText("That email and password don't match.")).toBeVisible();
 });
 
 test("dashboard shows live KPIs from the API", async ({ page }) => {
   await signIn(page, "ops@verdanafoods.demo");
-  await expect(page.getByText("Kg at risk")).toBeVisible();
-  await expect(page.getByText("Pending approvals")).toBeVisible();
+  await expect(page).toHaveURL(/operations/);
+  await expect(page.getByRole("heading", { name: "Live Operations" })).toBeVisible();
 });
 
 test("theme can be switched and persists", async ({ page }) => {

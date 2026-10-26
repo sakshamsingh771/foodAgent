@@ -74,7 +74,7 @@ async def _call_model(system: str, prompt: str) -> str:
     from google.genai import types
 
     s = get_settings()
-    client = genai.Client(api_key=s.gemini_api_key)
+    client = genai.Client(api_key=s.gemini_api_key, http_options=types.HttpOptions(api_version="v1"))
     resp = await client.aio.models.generate_content(
         model=s.gemini_model, contents=prompt,
         config=types.GenerateContentConfig(system_instruction=system, response_mime_type="application/json", response_schema=AiAnswer,

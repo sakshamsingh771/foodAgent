@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     worker_interval_seconds: int = 30
     # Gemini (server-side only; the key is never sent to the browser)
     gemini_api_key: str = ""
-    gemini_model: str = ""  # set to a Flash model ID available to your key, e.g. from Google AI Studio's model list
+    gemini_model: str = ""  # set to a Flash model ID available to your key; gemini-3.1-flash-lite is the tested default
     gemini_timeout_seconds: int = 25
     gemini_max_retries: int = 2  # only for transient upstream failures (5xx / unavailable), never for quota or auth errors
     ai_max_message_chars: int = 800

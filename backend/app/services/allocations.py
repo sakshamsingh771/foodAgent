@@ -16,13 +16,22 @@ from __future__ import annotations
 import uuid
 from datetime import timedelta
 
-from sqlalchemy import case as sa_case, func, select, update
+from sqlalchemy import case as sa_case
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core import security as sec
 from app.core.database import utcnow
 from app.core.errors import AppError, Conflict
-from app.models import (ACTIVE_ALLOCATION, Allocation, InventoryLot, Recipient, RecoveryCase, SustainabilityMetric, User)
+from app.models import (
+    ACTIVE_ALLOCATION,
+    Allocation,
+    InventoryLot,
+    Recipient,
+    RecoveryCase,
+    SustainabilityMetric,
+    User,
+)
 from app.services import allocation as alg
 from app.services import audit, cases, events, freshness
 from app.services.cases import CO2E_RUNG_FACTOR

@@ -3,17 +3,27 @@ emits events + audit, and can be reverted from a recorded snapshot."""
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import delete, select
 from sqlalchemy import DateTime as SADateTime
 from sqlalchemy import Uuid as SAUuid
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.core import security as sec
 from app.core.database import UTCDateTime, utcnow
-from app.core.errors import AppError, Conflict, NotFound
-from app.models import (Anomaly, InventoryLot, Pickup, PlantMetric, Plant, Recipient, RecoveryCase, RecoveryOption, ScenarioRun, User)
+from app.core.errors import Conflict, NotFound
+from app.models import (
+    Anomaly,
+    InventoryLot,
+    Pickup,
+    Plant,
+    PlantMetric,
+    RecoveryCase,
+    RecoveryOption,
+    ScenarioRun,
+    User,
+)
 from app.services import audit, cases, events, freshness
 from app.services import recovery_engine as eng
-from app.core import security as sec
 
 CATALOG = [
     {"kind": "rider_cancels", "title": "Rider cancels", "target": "case", "description": "The assigned pickup is cancelled and the case is replanned with extra delay."},

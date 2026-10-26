@@ -8,7 +8,7 @@ Set these variables in the root `.env` file:
 
 ```env
 GEMINI_API_KEY=your_google_ai_studio_key
-GEMINI_MODEL=your_supported_model_id
+GEMINI_MODEL=gemini-3.1-flash-lite
 ```
 
 The variables are passed to the API container by `docker compose`. Never use a `NEXT_PUBLIC_` prefix for the key.
