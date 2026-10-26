@@ -104,6 +104,7 @@ def admin_overview(db: DB, user: CurrentUser):
     pending = db.execute(select(func.count()).select_from(RecoveryCase).where(*_org(RecoveryCase, user), RecoveryCase.status == "pending_approval")).scalar_one()
     sec_events = db.execute(select(AuditEvent).where(*_org(AuditEvent, user), AuditEvent.action.like("user.%")).order_by(AuditEvent.created_at.desc()).limit(10)).scalars().all()
     ex = _exceptions(db, user)
-    return {"users_by_role": by_role, "pending_approvals": pending,
+    pending_users = db.execute(select(func.count()).select_from(User).where(*_org(User, user), User.status == "PENDING")).scalar_one()
+    return {"users_by_role": by_role, "pending_approvals": pending, "pending_users": pending_users,
             "exception_counts": {k: len(v) for k, v in ex.items()},
             "recent_security_events": [{"seq": e.seq, "action": e.action, "summary": e.summary, "actor": e.actor_label, "created_at": e.created_at.isoformat()} for e in sec_events]}

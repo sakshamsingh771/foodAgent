@@ -21,6 +21,15 @@ RECIPIENT = "RECIPIENT"
 LOGISTICS = "LOGISTICS"
 AUDITOR = "AUDITOR"
 ROLES = [ADMIN, OPS, RECOVERY, RECIPIENT, LOGISTICS, AUDITOR]
+PENDING_ROLE = "PENDING"  # placeholder role for accounts awaiting approval; has no entry in ROLE_PERMS => zero permissions
+
+ACTIVE, PENDING, REJECTED, DISABLED = "ACTIVE", "PENDING", "REJECTED", "DISABLED"
+
+
+def set_status(user, status: str) -> None:
+    """Single place that changes account status, keeping the legacy is_active flag in sync."""
+    user.status = status
+    user.is_active = status == ACTIVE
 
 ROLE_PERMS: dict[str, set[str]] = {
     ADMIN: {
@@ -109,6 +118,10 @@ def decode_refresh(token: str) -> dict:
     if data.get("type") != "refresh":
         raise Unauthorized("Invalid token type.", "REFRESH_INVALID")
     return data
+
+
+def new_invite_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
 def token_digest(jti: str) -> str:

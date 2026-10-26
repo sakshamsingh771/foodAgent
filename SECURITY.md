@@ -7,4 +7,8 @@
 - Login rate limiting (per-process; use a shared store when scaled out). CORS allow-list. Security headers on API and web.
 - Production refuses default/weak JWT secrets. No secrets in the repo; `.env` is git-ignored.
 - Tamper-evident audit log (hash chain) with a verify endpoint. Logs are structured JSON with request IDs and never include passwords or tokens.
-- Tokens are kept in `localStorage` for simplicity; move to httpOnly cookies + CSRF protection before a hardened production rollout.
+- Tokens are kept in `localStorage` for simplicity; move to httpOnly cookies + CSRF protection before a hardened production rollout (not changed in this upgrade: it needs same-site deployment of web+API and CSRF tokens).
+- Registration: public sign-up bodies are `extra="forbid"`, so `role`, `org_id`, `status`, `permissions` are rejected (422). Role and organization for joiners come only from an invitation row (SHA-256 hash stored, email-bound, expiring, single-use, revocable). New organizations start with a PENDING, zero-permission administrator until a setup code (`FIRST_ADMIN_SETUP_TOKEN`) or platform approval.
+- Account status (`ACTIVE|PENDING|REJECTED|DISABLED`) is checked on every authenticated request; role and org always come from the DB, not token claims, so role changes/deactivation apply to unexpired tokens immediately. Refresh tokens are revoked on deactivation, role change, approval decisions.
+- Brute force: per-IP+email and per-IP registration limiters, plus a temporary lock after `MAX_FAILED_LOGINS` failures per email (per process; use a shared store / gateway when scaled out).
+- Demo credentials endpoint `/auth/demo-accounts` returns 404 when `ENVIRONMENT=production`.

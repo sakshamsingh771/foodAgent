@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api import allocations, auth, inventory, logistics, insights, misc, recovery, reports
+from app.api import allocations, auth, inventory, invitations, logistics, insights, misc, recovery, reports
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.errors import install_error_handlers
@@ -49,7 +49,7 @@ async def request_context(request: Request, call_next):
     return response
 
 
-for r in (auth.router, inventory.router, recovery.router, allocations.router, logistics.router, insights.router, misc.router, reports.router):
+for r in (auth.router, inventory.router, recovery.router, allocations.router, logistics.router, insights.router, misc.router, reports.router, invitations.router):
     app.include_router(r, prefix="/api/v1")
 
 

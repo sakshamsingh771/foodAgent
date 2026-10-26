@@ -1,7 +1,9 @@
 export type Role = "ADMIN" | "OPERATIONS_MANAGER" | "RECOVERY_MANAGER" | "RECIPIENT" | "LOGISTICS" | "AUDITOR";
 export type FreshState = "SAFE" | "ACT_SOON" | "LOSS_IMMINENT";
 export type Method = "RULE" | "STATISTICAL" | "ML" | "LLM" | "SIMULATED";
-export interface User { id: string; email: string; full_name: string; role: Role; org_id: string | null; recipient_id: string | null; language: string; is_platform_admin: boolean; is_active?: boolean; permissions: string[] }
+export interface User { id: string; email: string; full_name: string; role: Role; org_id: string | null; recipient_id: string | null; language: string; is_platform_admin: boolean; is_active?: boolean; permissions: string[]; status?: AccountStatus; requested_role?: string | null; email_verified?: boolean; created_at?: string | null; last_login_at?: string | null }
+export type AccountStatus = "ACTIVE" | "PENDING" | "REJECTED" | "DISABLED";
+export interface InvitationRow { id: string; email: string; role: Role; status: "pending" | "used" | "expired" | "revoked"; expires_at: string; requires_approval: boolean; created_at: string; token?: string; invite_url?: string }
 export interface Page<T> { items: T[]; total: number; page: number; page_size: number; pages: number }
 export interface Freshness { remaining_minutes: number; percent: number; state: FreshState; method: Method }
 export interface Lot {

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 Rung = Literal["R1", "R2", "R3", "R4"]
@@ -17,11 +17,44 @@ def _email(v: str) -> str:
 
 
 class RegisterIn(BaseModel):
-    organization_name: str = Field(min_length=2, max_length=160)
+    """Public registration. `extra="forbid"`: role / org_id / status / permissions in the body are rejected (422), never honoured."""
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["create_org", "join"] = "create_org"
     full_name: str = Field(min_length=2, max_length=120)
     email: str
     password: str = Field(min_length=10, max_length=128)
+    confirm_password: str | None = Field(default=None, max_length=128)
+    organization_name: str | None = Field(default=None, min_length=2, max_length=160)
+    invite_token: str | None = Field(default=None, min_length=16, max_length=128)
+    setup_token: str | None = Field(default=None, max_length=256)
     _e = field_validator("email")(_email)
+
+    @model_validator(mode="after")
+    def check_shape(self):
+        if self.confirm_password is not None and self.confirm_password != self.password:
+            raise ValueError("Passwords do not match.")
+        if self.mode == "create_org" and not self.organization_name:
+            raise ValueError("Enter your organization's name.")
+        if self.mode == "join" and not self.invite_token:
+            raise ValueError("An invitation is required to join an organization.")
+        return self
+
+
+class InvitationCreateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str
+    role: Literal["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "LOGISTICS", "AUDITOR", "RECIPIENT"]
+    recipient_id: uuid.UUID | None = None
+    expires_in_days: int = Field(default=7, ge=1, le=30)
+    requires_approval: bool = False  # if true the invited user waits as PENDING until an admin approves
+    max_uses: int = Field(default=1, ge=1, le=1)  # single-use; kept explicit so the contract can widen later
+    _e = field_validator("email")(_email)
+
+
+class DecisionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "LOGISTICS", "AUDITOR"] | None = None
+    reason: str | None = Field(default=None, max_length=200)
 
 
 class LoginIn(BaseModel):
@@ -148,6 +181,7 @@ class TransportEventIn(BaseModel):
 
 
 class UserUpdateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     role: Literal["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "LOGISTICS", "AUDITOR"] | None = None
     is_active: bool | None = None
     reason: str | None = Field(None, max_length=200)

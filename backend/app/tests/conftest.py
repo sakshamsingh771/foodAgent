@@ -5,6 +5,8 @@ os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite:///
 os.environ["UPLOAD_DIR"] = tempfile.mkdtemp()
 os.environ["RATE_LIMIT_LOGIN_PER_MINUTE"] = "100000"
 os.environ["BCRYPT_ROUNDS"] = "4"
+os.environ["RATE_LIMIT_REGISTER_PER_MINUTE"] = "100000"
+os.environ["MAX_FAILED_LOGINS"] = "100000"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,6 +26,9 @@ def _schema():
 @pytest.fixture()
 def client():
     _cache.clear()
+    from app.api import auth as _auth
+    _auth._failures.clear()
+    _auth._attempts.clear()
     with SessionLocal() as s:
         reset_all(s)
         seed(s)

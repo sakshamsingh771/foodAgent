@@ -14,6 +14,8 @@ def user_out(u: User) -> dict:
     return {"id": str(u.id), "email": u.email, "full_name": u.full_name, "role": u.role, "org_id": str(u.org_id) if u.org_id else None,
             "recipient_id": str(u.recipient_id) if u.recipient_id else None, "language": u.language,
             "is_platform_admin": u.is_platform_admin, "is_active": u.is_active,
+            "status": u.status, "requested_role": u.requested_role, "email_verified": u.email_verified_at is not None,
+            "created_at": iso(u.created_at), "last_login_at": iso(u.last_login_at),
             "permissions": sorted(sec.ROLE_PERMS.get(u.role, set()))}
 
 

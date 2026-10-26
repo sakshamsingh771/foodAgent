@@ -1,4 +1,4 @@
-import type { User } from "@/types/api";
+import type { Role, User } from "@/types/api";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "") + "/api/v1";
 const KEY = "foodagent.session";
@@ -30,13 +30,16 @@ export const session = {
   },
 };
 
+export const EXPIRED_KEY = "foodagent.expired";
+function markExpired() { try { sessionStorage.setItem(EXPIRED_KEY, "1"); } catch { /* ignore */ } }
+
 let refreshing: Promise<Session | null> | null = null;
 async function refresh(): Promise<Session | null> {
   const cur = session.get();
   if (!cur) return null;
   refreshing ??= fetch(`${BASE}/auth/refresh`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: cur.refresh_token }) })
     .then(async (r) => { if (!r.ok) throw new Error("refresh"); const s = await r.json(); session.set(s); return s as Session; })
-    .catch(() => { session.set(null); return null; })
+    .catch(() => { markExpired(); session.set(null); return null; })
     .finally(() => { refreshing = null; });
   return refreshing;
 }
@@ -80,10 +83,23 @@ export async function login(email: string, password: string) {
   session.set(s);
   return s;
 }
-export async function registerOrg(body: { organization_name: string; full_name: string; email: string; password: string }) {
-  const s = (await parse(await fetch(`${BASE}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => { throw new ApiError(0, "NETWORK", FRIENDLY.NETWORK); }))) as Session;
-  session.set(s);
-  return s;
+export interface RegisterBody {
+  mode: "create_org" | "join"; full_name: string; email: string; password: string; confirm_password: string;
+  organization_name?: string; invite_token?: string; setup_token?: string;
+}
+export interface RegisterResult { status: "ACTIVE" | "PENDING"; message: string; session: Session | null; user: User | null }
+/** Public sign-up. The server decides role/organization/status; the client only submits identity + invitation/setup proof. */
+export async function register(body: RegisterBody): Promise<RegisterResult> {
+  const r = (await parse(await fetch(`${BASE}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => { throw new ApiError(0, "NETWORK", FRIENDLY.NETWORK); }))) as RegisterResult;
+  if (r.session) session.set(r.session);
+  return r;
+}
+export interface InvitationInfo { organization_name: string; role: Role; email: string; requires_approval: boolean; expires_at: string }
+export async function lookupInvitation(token: string): Promise<InvitationInfo> {
+  return (await parse(await fetch(`${BASE}/auth/invitation?token=${encodeURIComponent(token)}`).catch(() => { throw new ApiError(0, "NETWORK", FRIENDLY.NETWORK); }))) as InvitationInfo;
+}
+export async function demoAccounts(): Promise<{ password: string; accounts: { email: string; label: string }[] } | null> {
+  try { const r = await fetch(`${BASE}/auth/demo-accounts`); return r.ok ? await r.json() : null; } catch { return null; }
 }
 export async function logout() {
   const s = session.get();

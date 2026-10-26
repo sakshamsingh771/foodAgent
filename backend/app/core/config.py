@@ -24,6 +24,18 @@ class Settings(BaseSettings):
     simulator_enabled: bool = False
     simulator_interval_seconds: int = 90
     worker_interval_seconds: int = 30
+    # Onboarding / account security
+    first_admin_setup_token: str = ""  # if set, a create-organisation request presenting it is activated immediately; otherwise it waits for platform approval
+    demo_login_enabled: bool = True  # honoured only outside production
+    invitation_expiry_days: int = 7
+    app_url: str = "http://localhost:3000"  # used to build invitation links
+    rate_limit_register_per_minute: int = 5
+    max_failed_logins: int = 8  # per email within the window below -> temporary lock
+    failed_login_window_minutes: int = 15
+
+    @property
+    def demo_enabled(self) -> bool:
+        return self.demo_login_enabled and self.environment != "production"
 
     @property
     def cors_list(self) -> list[str]:
@@ -35,6 +47,8 @@ class Settings(BaseSettings):
                 value = getattr(self, name)
                 if _DEV_SECRET_MARKER in value or len(value) < 32:
                     raise RuntimeError(f"{name} must be set to a strong, unique secret in production")
+            if self.first_admin_setup_token and len(self.first_admin_setup_token) < 24:
+                raise RuntimeError("first_admin_setup_token must be at least 24 characters in production")
 
 
 @lru_cache

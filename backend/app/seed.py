@@ -23,7 +23,7 @@ PNG_1PX = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000
 
 
 def _user(db, email, name, role, org, **kw):
-    u = User(email=email, full_name=name, role=role, org_id=org.id if org else None, password_hash=sec.hash_password(DEMO_PASSWORD), **kw)
+    u = User(email=email, full_name=name, role=role, org_id=org.id if org else None, password_hash=sec.hash_password(DEMO_PASSWORD), email_verified_at=utcnow(), **kw)
     db.add(u)
     return u
 

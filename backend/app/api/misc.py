@@ -15,7 +15,7 @@ from app.core import security as sec
 from app.core.config import get_settings
 from app.core.database import SessionLocal, utcnow
 from app.core.errors import AppError, Conflict, NotFound
-from app.models import (ComplianceDocument, EventOutbox, InventoryLot, Notification, Organization, Product, Recipient,
+from app.models import (ComplianceDocument, RefreshToken, EventOutbox, InventoryLot, Notification, Organization, Product, Recipient,
                         RecoveryCase, ScenarioRun, User)
 from app.schemas import ScenarioApplyIn, ScenarioIn, UserCreateIn, UserUpdateIn
 from app.services import audit, scenarios
@@ -203,8 +203,16 @@ def search(db: DB, user: CurrentUser, q: str = Query(min_length=2, max_length=60
 
 # ---- Users / org -----------------------------------------------------------------------
 @router.get("/users", tags=["users"], dependencies=[Depends(require("users:manage"))])
-def users(db: DB, user: CurrentUser):
-    rows = db.execute(select(User).where(*_org(User, user)).order_by(User.full_name)).scalars().all()
+def users(db: DB, user: CurrentUser, q: str | None = None, role: str | None = None, status: str | None = None):
+    conds = list(_org(User, user))
+    if q:
+        like = f"%{q.strip()[:80]}%"
+        conds.append(or_(User.full_name.ilike(like), User.email.ilike(like)))
+    if role:
+        conds.append(User.role == role)
+    if status:
+        conds.append(User.status == status.upper())
+    rows = db.execute(select(User).where(*conds).order_by(User.full_name)).scalars().all()
     return [user_out(u) for u in rows]
 
 
@@ -233,6 +241,8 @@ def update_user(user_id: uuid.UUID, body: UserUpdateIn, db: DB, user: User = Dep
         raise NotFound("We couldn't find that record.", "NOT_FOUND")
     if target.is_platform_admin and not user.is_platform_admin:
         raise NotFound("We couldn't find that record.", "NOT_FOUND")
+    if target.status in (sec.PENDING, sec.REJECTED):
+        raise AppError("This account is waiting for (or was refused) approval. Use approve or reject instead.", "USE_APPROVAL", 409)
     new_role = body.role if body.role is not None else target.role
     new_active = body.is_active if body.is_active is not None else target.is_active
     if new_role == target.role and new_active == target.is_active:
@@ -250,10 +260,9 @@ def update_user(user_id: uuid.UUID, body: UserUpdateIn, db: DB, user: User = Dep
         if others == 0:
             raise AppError("An organization needs at least one active admin.", "LAST_ADMIN", 409)
     before = {"role": target.role, "is_active": target.is_active}
-    target.role, target.is_active = new_role, new_active
-    if not new_active:
-        from app.models import RefreshToken
-        db.execute(update(RefreshToken).where(RefreshToken.user_id == target.id, RefreshToken.revoked_at.is_(None)).values(revoked_at=utcnow()))
+    target.role = new_role
+    sec.set_status(target, sec.ACTIVE if new_active else sec.DISABLED)
+    db.execute(update(RefreshToken).where(RefreshToken.user_id == target.id, RefreshToken.revoked_at.is_(None)).values(revoked_at=utcnow()))
     action = "user.deactivated" if (before["is_active"] and not new_active) else "user.reactivated" if (new_active and not before["is_active"]) else "user.role_changed"
     audit_org = target.org_id or user.org_id
     if audit_org is None:

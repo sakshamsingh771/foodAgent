@@ -19,8 +19,14 @@ def current_user(db: DB, creds: Annotated[HTTPAuthorizationCredentials | None, D
         raise Unauthorized("Please sign in to continue.", "NOT_AUTHENTICATED")
     data = sec.decode_access(creds.credentials)
     user = db.get(User, uuid.UUID(data["sub"]))
-    if not user or not user.is_active:
+    if not user:
         raise Unauthorized("This account is no longer active.", "ACCOUNT_INACTIVE")
+    if user.status == sec.PENDING:
+        raise Forbidden("Your account is awaiting approval.", "ACCOUNT_PENDING")
+    if user.status != sec.ACTIVE or not user.is_active:
+        raise Unauthorized("This account is no longer active.", "ACCOUNT_INACTIVE")
+    # NOTE: role/org always come from the database row, never from the token claims, so a role change
+    # or deactivation takes effect on the very next request even with an unexpired access token.
     return user
 
 

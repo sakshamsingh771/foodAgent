@@ -58,6 +58,30 @@ class User(Entity):
     language: Mapped[str] = mapped_column(String(5), default="en")
     last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    # Account lifecycle. `status` is authoritative; `is_active` is kept in sync (status == ACTIVE) for older code paths.
+    status: Mapped[str] = mapped_column(String(16), default="ACTIVE", server_default="ACTIVE", index=True)  # ACTIVE|PENDING|REJECTED|DISABLED
+    email_verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    requested_role: Mapped[str | None] = mapped_column(String(24), nullable=True)  # what a PENDING user asked for; grants nothing
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class Invitation(Entity):
+    """Backend-controlled invitation. Only the SHA-256 of the token is stored; the raw token is shown once."""
+    __tablename__ = "invitations"
+    org_id: Mapped[uuid.UUID] = fk("organizations.id")
+    email: Mapped[str] = mapped_column(String(254), index=True)
+    role: Mapped[str] = mapped_column(String(24))
+    recipient_id: Mapped[uuid.UUID | None] = fk("recipients.id", nullable=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    max_uses: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    use_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    last_used_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
 
 class RefreshToken(Entity):

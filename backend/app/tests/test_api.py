@@ -49,7 +49,8 @@ def test_register_creates_org_and_validates(client):
     nodigit = client.post(f"{API}/auth/register", json={"organization_name": "Test Bakery Co", "full_name": "A B", "email": "x@y.io", "password": "onlyletterslong"})
     assert nodigit.json()["error"]["code"] == "WEAK_PASSWORD"
     ok = client.post(f"{API}/auth/register", json={"organization_name": "Lakeside Kitchens", "full_name": "Isha Rao", "email": "isha@lakeside.io", "password": "Strong#Pass123"})
-    assert ok.status_code == 201 and ok.json()["user"]["role"] == "ADMIN"
+    # public sign-up never yields an immediate administrator: it waits for protected approval
+    assert ok.status_code == 201 and ok.json()["status"] == "PENDING" and ok.json()["session"] is None
     dup = client.post(f"{API}/auth/register", json={"organization_name": "Lakeside Kitchens", "full_name": "Isha Rao", "email": "isha@lakeside.io", "password": "Strong#Pass123"})
     assert dup.status_code == 409
 
