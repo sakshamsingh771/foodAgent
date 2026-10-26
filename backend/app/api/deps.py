@@ -18,7 +18,11 @@ def current_user(db: DB, creds: Annotated[HTTPAuthorizationCredentials | None, D
     if creds is None:
         raise Unauthorized("Please sign in to continue.", "NOT_AUTHENTICATED")
     data = sec.decode_access(creds.credentials)
-    user = db.get(User, uuid.UUID(data["sub"]))
+    try:
+        user_id = uuid.UUID(data["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise Unauthorized("We couldn't verify your session. Please sign in again.", "TOKEN_INVALID") from None
+    user = db.get(User, user_id)
     if not user:
         raise Unauthorized("This account is no longer active.", "ACCOUNT_INACTIVE")
     if user.status == sec.PENDING:

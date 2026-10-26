@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     simulator_enabled: bool = False
     simulator_interval_seconds: int = 90
     worker_interval_seconds: int = 30
+    # Gemini (server-side only; the key is never sent to the browser)
+    gemini_api_key: str = ""
+    gemini_model: str = ""  # set to a Flash model ID available to your key, e.g. from Google AI Studio's model list
+    gemini_timeout_seconds: int = 25
+    gemini_max_retries: int = 2  # only for transient upstream failures (5xx / unavailable), never for quota or auth errors
+    ai_max_message_chars: int = 800
+    rate_limit_ai_per_minute: int = 12
     # Onboarding / account security
     first_admin_setup_token: str = ""  # if set, a create-organisation request presenting it is activated immediately; otherwise it waits for platform approval
     demo_login_enabled: bool = True  # honoured only outside production

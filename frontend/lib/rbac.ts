@@ -13,6 +13,7 @@ import {
   Users,
   ShieldCheck,
   Truck,
+  Sparkles,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { Role } from "@/types/api";
@@ -44,6 +45,7 @@ export const NAV: readonly NavItem[] = [
   { href: "/scenarios", label: "Scenarios", icon: FlaskConical, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"] },
   { href: "/users", label: "Users & roles", icon: Users, roles: ["ADMIN"], perm: "users:manage" },
   { href: "/reports", label: "Reports", icon: FileDown, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"], perm: "reports:export" },
+  { href: "/assistant", label: "AI Assistant", icon: Sparkles, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR"], perm: "ai:assistant" },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["ADMIN", "OPERATIONS_MANAGER", "RECOVERY_MANAGER", "AUDITOR", "LOGISTICS", "RECIPIENT"] },
 ];
 

@@ -59,7 +59,7 @@ def test_admin_changes_role_and_deactivates(client):
     assert patch(client, ADMIN, f"/users/{me['id']}", {"is_active": False, "reason": "self"}).status_code == 422  # no self lockout
     r = patch(client, ADMIN, f"/users/{ops_id}", {"is_active": False, "reason": "left company"})
     assert r.status_code == 200
-    assert client.post(f"{API}/auth/login", json={"email": OPS, "password": "FoodAgent#2026demo"}).status_code == 401
+    assert client.post(f"{API}/auth/login", json={"email": OPS, "password": "FoodAgent#2026demo"}).status_code == 403
     # old access token stops working immediately
     with SessionLocal() as s:
         acts = {e.action for e in s.execute(select(AuditEvent)).scalars()}

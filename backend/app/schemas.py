@@ -190,3 +190,26 @@ class UserUpdateIn(BaseModel):
 class LotAdjustIn(BaseModel):
     delta_kg: float = Field(allow_inf_nan=False)
     reason: str = Field(min_length=5, max_length=200)
+
+
+class AiChatIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message: str = Field(min_length=3, max_length=2000)
+    case_id: uuid.UUID | None = None
+
+
+class AiCaseIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    case_id: uuid.UUID | None = None
+
+
+class AiExplainIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    case_id: uuid.UUID
+    strategy: Strategy = "max_recovery"
+    allow_split: bool = True
+
+
+class AiSummaryIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    days: int = Field(default=7, ge=1, le=90)

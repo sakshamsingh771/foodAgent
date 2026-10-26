@@ -31,7 +31,9 @@ cd ../frontend && npm ci && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run de
 Tests: `cd backend && pytest app/tests -q` (SQLite by default; set `TEST_DATABASE_URL` to run on Postgres). E2E + axe: `cd frontend && npx playwright install && npm run test:e2e` with the stack running.
 
 ## Environment variables
-See `.env.example`. Required: `JWT_SECRET`, `JWT_REFRESH_SECRET` (production refuses dev/weak values), `DATABASE_URL`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`. `LLM_API_KEY` is optional: nothing depends on it.
+See `.env.example`. Required: `JWT_SECRET`, `JWT_REFRESH_SECRET` (production refuses dev/weak values), `DATABASE_URL`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`. `GEMINI_API_KEY` and `GEMINI_MODEL` enable the server-side AI assistant; the feature reports a truthful unavailable state when they are empty. `LLM_API_KEY` is legacy and optional.
 
 ## Docs
 [ARCHITECTURE](ARCHITECTURE.md) · [API](API.md) · [DATABASE](DATABASE.md) · [SECURITY](SECURITY.md) · [DEPLOYMENT](DEPLOYMENT.md) · [DEMO](DEMO.md) · [ASSUMPTIONS](ASSUMPTIONS.md) · [PRODUCT_AUDIT](PRODUCT_AUDIT.md)
+
+AI assistant (Gemini): see [AI.md](AI.md).

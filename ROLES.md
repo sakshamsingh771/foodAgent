@@ -16,6 +16,7 @@ Single source of truth: `backend/app/core/security.py::ROLE_PERMS`. `/auth/login
 | Respond to offers (`recipient:respond`) | – | – | – | – | own offers | – |
 | Audit log (`audit:read`) | ✔ | – | ✔ | – | – | ✔ |
 | Reports & CSV export (`reports:export`) **new** | ✔ | ✔ | ✔ | – | – | ✔ |
+| AI Assistant (`ai:assistant`) | ✔ | ✔ | ✔ | – | – | ✔ |
 | Manage users (`users:manage`), admin overview (`admin:overview`) **new overview / PATCH** | ✔ | – | – | – | – | – |
 
 Other roles: none. `is_platform_admin` is the only cross-organization flag.
@@ -26,6 +27,7 @@ Other roles: none. `is_platform_admin` is the only cross-organization flag.
 - `GET /reports/exceptions`, `/reports/{cases,inventory,pickups,exceptions}.csv` – org-scoped, CSV-injection-safe, each export audited.
 - `GET /admin/overview` – users by role, pending approvals, exceptions, recent user-security events.
 - Frontend: permission-aware nav, `/users`, `/reports`, inventory Adjust dialog (shown only with `lots:adjust`).
+- AI Assistant: `/assistant` and `/api/v1/ai/*` are available only to roles with `ai:assistant`; Gemini context is organization-scoped and read-only.
 
 ## Not implemented (needs schema migration / larger scope)
 Organization verification status & management UI, driver/vehicle fields, proof-of-delivery upload, partial-quantity acceptance beyond the existing allocation flow, Playwright E2E run (browsers not installed here).

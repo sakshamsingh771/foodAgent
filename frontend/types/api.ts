@@ -51,3 +51,27 @@ export interface AllocationPlan {
 }
 export interface AllocationSim { simulated: true; scenario: string; changes: string[]; before: AllocationPlan; after: AllocationPlan; delta: { allocated_kg: number; unallocated_kg: number }; note: string }
 export interface AllocationCompare { simulated: true; label: string; strategies: (AllocationPlan & { label: string })[]; baseline_single_recipient: { allocated_kg: number; rung: string | null } }
+export interface AiStatus {
+  configured: boolean;
+  provider: string;
+  model: string | null;
+  message: string;
+}
+export interface AiAnswer {
+  summary: string;
+  facts: string[];
+  hypotheses: string[];
+  recommendations: string[];
+  risks: string[];
+  next_steps: string[];
+  missing_information: string[];
+  references: string[];
+  warnings: string[];
+}
+export interface AiResult {
+  ai_generated: true;
+  kind: "chat" | "recommendations" | "failures" | "summary" | "explain";
+  answer: AiAnswer;
+  data: Record<string, unknown>;
+  disclaimer: string;
+}
